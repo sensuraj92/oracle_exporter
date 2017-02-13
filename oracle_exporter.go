@@ -28,8 +28,12 @@ var (
 		"web.telemetry-path", "/metrics",
 		"Path under which to expose metrics.",
 	)
-	collectInstSession = flag.Bool(
-		"collect.inst.user_session_count", true,
+	collectSessionGeneral = flag.Bool(
+		"collect.session_general", true,
+		"test",
+	)
+	collectTablespaceUsage = flag.Bool(
+		"collect.tbs_usage", true,
 		"test",
 	)
 )
@@ -172,10 +176,16 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	e.oracleUp.Set(1)
 
-	if *collectInstSession {
+	if *collectSessionGeneral {
 		if err = collector.ScrapeUserSessionCount(db, ch); err != nil {
-			log.Errorln("Error scraping for collect.inst.session:", err)
-			e.scrapeErrors.WithLabelValues("collect.inst.session").Inc()
+			log.Errorln("Error scraping for collect.session.general:", err)
+			e.scrapeErrors.WithLabelValues("collect.session.general").Inc()
+		}
+	}
+	if *collectTablespaceUsage {
+		if err = collector.ScrapeTablespaceUsage(db, ch); err != nil {
+			log.Errorln("Error scraping for collect.tablespace.usage:", err)
+			e.scrapeErrors.WithLabelValues("collect.tablespace.usage").Inc()
 		}
 	}
 }
