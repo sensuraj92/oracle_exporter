@@ -7,41 +7,16 @@ import (
 )
 
 const (
-	prefixResLimit = "resource_limit"
+	prefixResLimit = "resources"
 	// Scrape querys
 	resLimitQuery = `
-      SELECT resource_name, current_utilization, max_utilization, to_number(initial_allocation) init_limit
+      SELECT resource_name, current_utilization, max_utilization, to_number(initial_allocation) limit
       FROM   v$resource_limit
       WHERE  resource_name IN ('processes','sessions','max_shared_servers', 
                                'max_parallel_servers', 'enqueue_locks')`
 )
 
-//
-//
-// TODO: Change metrics to be aggregatable...
-//
-//
-//
-//
-//
-
-var (
-	currentCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixResLimit, "current_utilization"),
-		"Current utilization of a resource limit.",
-		[]string{"resource_name"}, nil,
-	)
-	maxCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixResLimit, "max_utilization"),
-		"Max utilization of a resource limit since startup.",
-		[]string{"resource_name"}, nil,
-	)
-	initLimit = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixResLimit, "init_limit"),
-		"Configured resource limit in pfile or spfile.",
-		[]string{"resource_name"}, nil,
-	)
-)
+var ()
 
 // ScrapeResourceLimit gathers metrics about resource limits in v$resource_limit.
 func ScrapeResourceLimit(db *sql.DB, ch chan<- prometheus.Metric) error {
@@ -64,20 +39,38 @@ func ScrapeResourceLimit(db *sql.DB, ch chan<- prometheus.Metric) error {
 			return err
 		}
 
+		var (
+			currentCount = prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, prefixResLimit, resName+"_current_count"),
+				"Current resource consumption.",
+				[]string{}, nil,
+			)
+			maxCount = prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, prefixResLimit, resName+"_max_count"),
+				"High Water Mark of resource since instance startup.",
+				[]string{}, nil,
+			)
+			initLimit = prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, prefixResLimit, resName+"_limit"),
+				"Configured limit in pfile or spfile.",
+				[]string{}, nil,
+			)
+		)
+
 		ch <- prometheus.MustNewConstMetric(
 			currentCount,
 			prometheus.GaugeValue,
-			curUtil, resName,
+			curUtil,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			maxCount,
 			prometheus.GaugeValue,
-			maxUtil, resName,
+			maxUtil,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			initLimit,
 			prometheus.GaugeValue,
-			iLimit, resName,
+			iLimit,
 		)
 	}
 
