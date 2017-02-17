@@ -14,9 +14,17 @@ const (
 	tbsUsageQuery = `
       SELECT a.tablespace_name,
              b.tbs_size size_bytes,
-             a.free free_bytes,
+             CASE 
+			   WHEN c.contents = 'UNDO'
+			   THEN b.tbs_size-d.used_bytes
+			   ELSE a.free
+			 END free_bytes,
              b.max_size max_size_bytes,
-             a.free + (b.max_size - b.tbs_size) AS max_free_bytes
+             CASE
+			   WHEN c.contents = 'UNDO' 
+			   THEN b.tbs_size-d.used_bytes
+			   ELSE a.free
+			 END + (b.max_size - b.tbs_size) AS max_free_bytes
       FROM   (SELECT tablespace_name,
                      SUM(bytes) free
               FROM   dba_free_space
@@ -27,20 +35,14 @@ const (
               FROM   dba_data_files
               GROUP BY tablespace_name) b,
              (SELECT tablespace_name, contents
-              FROM   dba_tablespaces
-              WHERE  contents = 'PERMANENT') c
-      WHERE  a.tablespace_name = b.tablespace_name
+              FROM   dba_tablespaces) c,
+             (SELECT tablespace_name, SUM(bytes) used_bytes
+              FROM   dba_undo_extents
+              WHERE  status in ('ACTIVE', 'UNEXPIRED')
+              GROUP BY tablespace_name) d
+      WHERE  b.tablespace_name = a.tablespace_name
       AND    b.tablespace_name = c.tablespace_name
-      UNION ALL
-      SELECT par.tablespace_name,
-               fs.tbs_size size_bytes,
-               fs.tbs_size - (SELECT VALUE db_block_size FROM v$parameter WHERE NAME LIKE 'db_block_size')*(ext.activeblks + ext.unexpiredblks) free_bytes,
-               fs.tbs_max_size max_size_bytes,
-               fs.tbs_max_size - (SELECT VALUE db_block_size FROM v$parameter WHERE NAME LIKE 'db_block_size')*(ext.activeblks + ext.unexpiredblks) max_free_bytes
-          FROM (SELECT SUM(activeblks) activeblks, SUM(unexpiredblks) unexpiredblks FROM v$undostat) ext
-              ,(SELECT VALUE tablespace_name FROM v$parameter WHERE NAME = 'undo_tablespace') par
-              ,(SELECT tablespace_name, SUM(greatest(bytes,maxbytes)) tbs_max_size, SUM(bytes) tbs_size FROM dba_data_files GROUP BY tablespace_name) fs
-         WHERE par.tablespace_name=fs.tablespace_name`
+      AND    b.tablespace_name = d.tablespace_name(+)`
 )
 
 var (

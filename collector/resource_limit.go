@@ -46,8 +46,8 @@ var (
 	)
 )
 
-// ScrapeTablespaceUsage gathers metrics about tablespace usage.
-func ScrapeTablespaceUsage(db *sql.DB, ch chan<- prometheus.Metric) error {
+// ScrapeResourceLimit gathers metrics about resource limits in v$resource_limit.
+func ScrapeResourceLimit(db *sql.DB, ch chan<- prometheus.Metric) error {
 	/*	var (
 			tbsName                        string
 			sizeBytes, freeBytes           float64
