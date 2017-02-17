@@ -7,88 +7,79 @@ import (
 )
 
 const (
-	prefixTbs = "resource_limit"
+	prefixResLimit = "resource_limit"
 	// Scrape querys
-	// Query tbsUsageQuery is based on Tim Hall's ts_fee_space.sql script.
-	//   Detailed information about UNDO tbs was added by @odbaeu.
 	resLimitQuery = `
-      SELECT resource_name, current_utilization, max_utilization, initial_allocation init_limit
+      SELECT resource_name, current_utilization, max_utilization, to_number(initial_allocation) init_limit
       FROM   v$resource_limit
       WHERE  resource_name IN ('processes','sessions','max_shared_servers', 
                                'max_parallel_servers', 'enqueue_locks')`
 )
 
+//
+//
+// TODO: Change metrics to be aggregatable...
+//
+//
+//
+//
+//
+
 var (
-	processesGauge = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixTbs, "processes"),
-		"",
-		[]string{"tablespace_name"}, nil,
+	currentCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, prefixResLimit, "current_utilization"),
+		"Current utilization of a resource limit.",
+		[]string{"resource_name"}, nil,
 	)
-	sessionsGauge = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixTbs, "sessions"),
-		"",
-		[]string{"tablespace_name"}, nil,
+	maxCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, prefixResLimit, "max_utilization"),
+		"Max utilization of a resource limit since startup.",
+		[]string{"resource_name"}, nil,
 	)
-	maxSharedServerGauge = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixTbs, "max_shared_servers"),
-		"",
-		[]string{"tablespace_name"}, nil,
-	)
-	maxParallelServersGauge = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixTbs, "max_parallel_servers"),
-		"",
-		[]string{"tablespace_name"}, nil,
-	)
-	enqueueLocksGauge = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefixTbs, "enqueue_locks"),
-		"",
-		[]string{"tablespace_name"}, nil,
+	initLimit = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, prefixResLimit, "init_limit"),
+		"Configured resource limit in pfile or spfile.",
+		[]string{"resource_name"}, nil,
 	)
 )
 
 // ScrapeResourceLimit gathers metrics about resource limits in v$resource_limit.
 func ScrapeResourceLimit(db *sql.DB, ch chan<- prometheus.Metric) error {
-	/*	var (
-			tbsName                        string
-			sizeBytes, freeBytes           float64
-			maxSizeBytes, maxSizeFreeBytes float64
-		)
+	var (
+		resName                  string
+		curUtil, maxUtil, iLimit float64
+	)
 
-		// Tablespace Usage
-		tbsRows, err := db.Query(tbsUsageQuery)
-		if err != nil {
+	// Tablespace Usage
+	resLimitRows, err := db.Query(resLimitQuery)
+	if err != nil {
+		return err
+	}
+	defer resLimitRows.Close()
+
+	for resLimitRows.Next() {
+		if err := resLimitRows.Scan(
+			&resName, &curUtil, &maxUtil, &iLimit,
+		); err != nil {
 			return err
 		}
-		defer tbsRows.Close()
 
-		for tbsRows.Next() {
-			if err := tbsRows.Scan(
-				&tbsName, &sizeBytes, &freeBytes, &maxSizeBytes, &maxSizeFreeBytes,
-			); err != nil {
-				return err
-			}
+		ch <- prometheus.MustNewConstMetric(
+			currentCount,
+			prometheus.GaugeValue,
+			curUtil, resName,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			maxCount,
+			prometheus.GaugeValue,
+			maxUtil, resName,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			initLimit,
+			prometheus.GaugeValue,
+			iLimit, resName,
+		)
+	}
 
-			ch <- prometheus.MustNewConstMetric(
-				tablespaceSizeBytes,
-				prometheus.GaugeValue,
-				sizeBytes, tbsName,
-			)
-			ch <- prometheus.MustNewConstMetric(
-				tablespaceFreeBytes,
-				prometheus.GaugeValue,
-				freeBytes, tbsName,
-			)
-			ch <- prometheus.MustNewConstMetric(
-				tablespaceMaxSizeBytes,
-				prometheus.GaugeValue,
-				maxSizeBytes, tbsName,
-			)
-			ch <- prometheus.MustNewConstMetric(
-				tablespaceMaxFreeBytes,
-				prometheus.GaugeValue,
-				maxSizeFreeBytes, tbsName,
-			)
-		}
-	*/
 	return nil
 }

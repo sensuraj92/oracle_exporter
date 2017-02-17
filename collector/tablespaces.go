@@ -9,8 +9,6 @@ import (
 const (
 	prefixTbs = "tablespaces"
 	// Scrape querys
-	// Query tbsUsageQuery is based on Tim Hall's ts_fee_space.sql script.
-	//   Detailed information about UNDO tbs was added by @odbaeu.
 	tbsUsageQuery = `
       SELECT a.tablespace_name,
              b.tbs_size size_bytes,

@@ -36,6 +36,10 @@ var (
 		"collect.tbs_usage", true,
 		"test",
 	)
+	collectResourceLimit = flag.Bool(
+		"collect.resource_limit", true,
+		"test",
+	)
 )
 
 // Metric name parts.
@@ -178,14 +182,20 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 	if *collectSessionGeneral {
 		if err = collector.ScrapeUserSessionCount(db, ch); err != nil {
-			log.Errorln("Error scraping for collect.session.general:", err)
-			e.scrapeErrors.WithLabelValues("collect.session.general").Inc()
+			log.Errorln("Error scraping for collect.session_general:", err)
+			e.scrapeErrors.WithLabelValues("collect.session_general").Inc()
 		}
 	}
 	if *collectTablespaceUsage {
 		if err = collector.ScrapeTablespaceUsage(db, ch); err != nil {
-			log.Errorln("Error scraping for collect.tablespace.usage:", err)
-			e.scrapeErrors.WithLabelValues("collect.tablespace.usage").Inc()
+			log.Errorln("Error scraping for collect.tablespace_usage:", err)
+			e.scrapeErrors.WithLabelValues("collect.tablespace_usage").Inc()
+		}
+	}
+	if *collectResourceLimit {
+		if err = collector.ScrapeResourceLimit(db, ch); err != nil {
+			log.Errorln("Error scraping for collect.resource_limit:", err)
+			e.scrapeErrors.WithLabelValues("collect.resource_limit").Inc()
 		}
 	}
 }
