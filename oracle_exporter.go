@@ -30,15 +30,19 @@ var (
 	)
 	collectSessionGeneral = flag.Bool(
 		"collect.session_general", true,
-		"test",
+		"Enables general information about sessions.",
 	)
 	collectTablespaceUsage = flag.Bool(
 		"collect.tbs_usage", true,
-		"test",
+		"Enables tablespace monitoring.",
 	)
 	collectResourceLimit = flag.Bool(
 		"collect.resource_limit", true,
-		"test",
+		"Enables resource limit monitoring.",
+	)
+	collectArchivelogStats = flag.Bool(
+		"collect.archivelog_stats", true,
+		"Enables statistics about archivelogs.",
 	)
 )
 
@@ -196,6 +200,12 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 		if err = collector.ScrapeResourceLimit(db, ch); err != nil {
 			log.Errorln("Error scraping for collect.resource_limit:", err)
 			e.scrapeErrors.WithLabelValues("collect.resource_limit").Inc()
+		}
+	}
+	if *collectArchivelogStats {
+		if err = collector.ScrapeArchivelogs(db, ch); err != nil {
+			log.Errorln("Error scraping for collect.archivelog_stats:", err)
+			e.scrapeErrors.WithLabelValues("collect.archivelog_stats").Inc()
 		}
 	}
 }
