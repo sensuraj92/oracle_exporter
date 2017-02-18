@@ -6,6 +6,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+//
+// TODO: Implement RAC support
+//
+
 const (
 	prefixResLimit = "resources"
 	// Scrape querys
